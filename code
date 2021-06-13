@@ -1,0 +1,82 @@
+--    List the name, job title, gender, pay rate, hire date and department name of the top 100 highest paid employees.
+--		List each employee only once, with each department in one cell, and the first and last name in one column.
+
+SELECT TOP 100 (P.FirstName + ' ' + P.LastName) AS Name, HRE.JobTitle, HRE.Gender,  
+CAST(HRPH.Rate AS Decimal(10,2)) AS PayRate, HRE.HireDate, STRING_AGG(HRD.Name,', ') AS DepartmentName
+FROM ((((Person.Person AS P  
+INNER JOIN HumanResources.Employee AS HRE  
+    ON P.BusinessEntityID = HRE.BusinessEntityID)  
+INNER JOIN  
+    (SELECT BusinessEntityID, MAX(RateChangeDate) AS RCD, MAX(Rate) AS Rate  
+FROM HumanResources.EmployeePayHistory AS EPH
+    GROUP BY BusinessEntityID) AS HRPH  
+    ON HRE.BusinessEntityID = HRPH.BusinessEntityID)  
+INNER JOIN HumanResources.EmployeeDepartmentHistory AS HRDH  
+    ON HRE.BusinessEntityID = HRDH.BusinessEntityID)  
+INNER JOIN HumanResources.Department AS HRD  
+    ON HRDH.DepartmentID = HRD.DepartmentID)  
+GROUP BY P.FirstName,P.LastName,HRE.JobTitle, HRE.Gender, HRPH.Rate, HRE.HireDate
+ORDER BY HRPH.Rate DESC;
+
+
+
+-- Which bike road frames have not been purchased by resellers? List the following:
+-- Product name, dealer price, and list price. Sort by list price in ascending order
+
+SELECT DISTINCT P.EnglishProductName, ROUND(P.DealerPrice, 2) AS DealerPrice,
+ROUND(P.ListPrice, 2) AS ListPrice
+FROM dbo.DimProduct AS P
+INNER JOIN dbo.DimProductSubcategory AS SC
+    ON P.ProductSubcategoryKey = SC.ProductSubcategoryKey
+LEFT JOIN FactResellerSales as S
+    ON P.ProductKey = S.ProductKey
+WHERE S.ProductKey IS NULL
+AND SC.ProductSubcategoryKey = 14
+ORDER BY ListPrice ASC;
+
+
+
+-- List all the bikes that have not been sold to customers and have a list price less than the average list price of all bikes.
+-- List the EnglishProductName and ListPrice.
+-- Sort by ListPrice in descending order and EnglishProductName in ascending order.
+
+SELECT P.EnglishProductName, P.ListPrice
+FROM dbo.DimProductCategory as PC
+INNER JOIN DimProductSubcategory as PSC
+ON PC.ProductCategoryKey = PSC.ProductCategoryKey
+INNER JOIN  dbo.DimProduct as P
+ON PSC.ProductSubcategoryKey = P.ProductSubcategoryKey
+LEFT JOIN dbo.FactInternetSales as FIS
+ON P.ProductKey = FIS.ProductKey
+WHERE FIS.SalesOrderNumber IS NULL
+AND PC.ProductCategoryKey = 1
+AND P.ListPrice < (SELECT AVG(SP.ListPrice)
+				FROM dbo.DimProduct as SP
+				INNER JOIN dbo.DimProductSubcategory as SPSC
+				ON SP.ProductSubcategoryKey = SPSC.ProductSubcategoryKey
+				INNER JOIN dbo.DimProductCategory as SPC
+				ON SPSC.ProductCategoryKey = SPC.ProductCategoryKey
+				WHERE SPC.ProductCategoryKey = 1)
+ORDER BY P.ListPrice DESC, P.EnglishProductName ASC;
+
+
+
+
+The company wants to make a contact list for customers in the United Kingdom and Canada who own at least one car, 
+--      and whose yearly income is equal to or more than the average yearly income of U.S. customers.
+--		List their full name (concatenated first, middle and last), country, phone number and email address. 
+--      Sort by last name, first name, and country in ascending order.
+
+SELECT CONCAT(C.FirstName, ' ',C.MiddleName, ' ', C.LastName) AS CustomerName, G.EnglishCountryRegionName, C.Phone, C.EmailAddress
+FROM dbo.DimCustomer AS C
+INNER JOIN dbo.DimGeography AS G
+	ON C.GeographyKey = G.GeographyKey
+WHERE G.EnglishCountryRegionName IN ('Canada', 'United Kingdom')
+AND C.NumberCarsOwned > 0
+AND C.YearlyIncome >=
+		(SELECT AVG(C.YearlyIncome)
+		 FROM dbo.DimCustomer AS C
+		 INNER JOIN dbo.DimGeography AS G
+			ON C.GeographyKey = G.GeographyKey
+		 WHERE G.EnglishCountryRegionName = 'United States')
+ORDER BY C.LastName ASC, C.FirstName ASC, G.EnglishCountryRegionName ASC;
