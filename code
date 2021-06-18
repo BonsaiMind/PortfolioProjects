@@ -1,5 +1,5 @@
---    List the name, job title, gender, pay rate, hire date and department name of the top 100 highest paid employees.
---		List each employee only once, with each department in one cell, and the first and last name in one column.
+-- List the name, job title, gender, pay rate, hire date and department name of the top 100 highest paid employees.
+-- List each employee only once, with each department in one cell, and the first and last name in one column.
 
 SELECT TOP 100 (P.FirstName + ' ' + P.LastName) AS Name, HRE.JobTitle, HRE.Gender,  
 CAST(HRPH.Rate AS Decimal(10,2)) AS PayRate, HRE.HireDate, STRING_AGG(HRD.Name,', ') AS DepartmentName
